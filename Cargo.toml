@@ -8,6 +8,8 @@ edition = "2018"
 
 [dependencies]
 clap = { git = "https://github.com/clap-rs/clap" }
+reqwest = { version = "0.10.3", features = ["json"] }
+tokio = { version = "0.2.13", features = ["full"] }
 
 [[bin]]
 name = "snmptrap-forwarder"
