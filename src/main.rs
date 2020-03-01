@@ -30,23 +30,19 @@ struct VarBind {
 async fn main() {
     let opts = Opts::parse();
     let address = opts.address;
-
-    match Url::parse(&address) {
-        Ok(url) => match url.scheme() {
-            "http" | "https" => (),
-            _ => panic!("Invalid HTTP URL: {}", address),
-        },
-        Err(_) => panic!("Invalid URL: {}", address),
+    let url = Url::parse(&address).expect(&format!("Invalid URL: {}", address));
+    match url.scheme() {
+        "http" | "https" => (),
+        _ => panic!("Invalid HTTP URL: {}", address),
     }
 
-    let trap = get_trap_message().expect("Unable to read trap message");
-
+    let trap = read_trap().expect("Unable to read trap message");
     send_trap(&address, &trap)
         .await
         .expect("Unable to forward trap message");
 }
 
-fn get_trap_message() -> IOResult<TrapMessage> {
+fn read_trap() -> IOResult<TrapMessage> {
     let stdin = io::stdin();
     let mut hostname = String::new();
     let mut address = String::new();
