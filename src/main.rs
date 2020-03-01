@@ -60,8 +60,8 @@ fn read_trap() -> IOResult<TrapMessage> {
     }
 
     Ok(TrapMessage {
-        hostname,
-        address,
+        hostname: String::from(hostname.trim()),
+        address: String::from(address.trim()),
         varbinds,
     })
 }
