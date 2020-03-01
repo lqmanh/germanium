@@ -40,7 +40,9 @@ fn display_error_then_exit(message: &str) {
 
 async fn send_request(address: &str, body: &HashMap<&str, &str>) -> Result<(), Box<dyn Error>> {
     let client = Client::new();
-    client.post(address).json(body).send().await?;
-
-    Ok(())
+    let res = client.post(address).json(body).send().await?;
+    match res.error_for_status() {
+        Ok(_) => Ok(()),
+        Err(err) => Err(Box::from(err)),
+    }
 }
