@@ -44,13 +44,17 @@ async fn main() {
 
 fn read_trap() -> IOResult<TrapMessage> {
     let stdin = io::stdin();
-    let mut hostname = String::new();
-    let mut address = String::new();
+    let mut lines = stdin.lock().lines();
+    let hostname = match lines.next() {
+        Some(hostname) => hostname?.trim().to_string(),
+        None => String::new(),
+    };
+    let address = match lines.next() {
+        Some(address) => address?.trim().to_string(),
+        None => String::new(),
+    };
     let mut varbinds = Vec::new();
-
-    stdin.read_line(&mut hostname)?;
-    stdin.read_line(&mut address)?;
-    for line in stdin.lock().lines() {
+    for line in lines {
         if let [oid, value] = line?.split_whitespace().take(2).collect::<Vec<&str>>()[..] {
             varbinds.push(VarBind {
                 oid: String::from(oid),
@@ -60,8 +64,8 @@ fn read_trap() -> IOResult<TrapMessage> {
     }
 
     Ok(TrapMessage {
-        hostname: String::from(hostname.trim()),
-        address: String::from(address.trim()),
+        hostname,
+        address,
         varbinds,
     })
 }
