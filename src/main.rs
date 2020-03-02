@@ -1,10 +1,7 @@
 use clap::{self, Clap};
-use reqwest::{Client, Url};
+use reqwest::{Client, Response, Result as HttpResult, Url};
 use serde::Serialize;
-use std::{
-    error::Error,
-    io::{self, BufRead, Result as IOResult},
-};
+use std::io::{self, BufRead, Result as IOResult};
 use tokio;
 
 #[derive(Clap)]
@@ -70,11 +67,8 @@ fn read_trap() -> IOResult<TrapMessage> {
     })
 }
 
-async fn send_trap(address: &str, trap: &TrapMessage) -> Result<(), Box<dyn Error>> {
+async fn send_trap(address: &str, trap: &TrapMessage) -> HttpResult<Response> {
     let client = Client::new();
     let res = client.post(address).json(trap).send().await?;
-    match res.error_for_status() {
-        Ok(_) => Ok(()),
-        Err(err) => Err(Box::from(err)),
-    }
+    res.error_for_status()
 }
