@@ -7,7 +7,12 @@ use tokio;
 #[derive(Clap)]
 #[clap(version = clap::crate_version!(), author = clap::crate_authors!())]
 struct Opts {
-    address: String,
+    #[clap(
+        required = true,
+        multiple = true,
+        help = "HTTP URL to forward trap messages to"
+    )]
+    address: Vec<String>,
 }
 
 #[derive(Serialize, Debug)]
@@ -26,17 +31,23 @@ struct VarBind {
 #[tokio::main]
 async fn main() {
     let opts = Opts::parse();
-    let address = opts.address;
-    let url = Url::parse(&address).expect(&format!("Invalid URL: {}", address));
-    match url.scheme() {
-        "http" | "https" => (),
-        _ => panic!("Invalid HTTP URL: {}", address),
-    }
+    let addresses = opts.address;
+    addresses
+        .iter()
+        .map(|address| Url::parse(address).expect(&format!("Invalid URL: {}", address)))
+        .for_each(|url| match url.scheme() {
+            "http" | "https" => (),
+            scheme => panic!("Invalid URL scheme: {}", scheme),
+        });
 
     let trap = read_trap().expect("Unable to read trap message");
-    send_trap(&address, &trap)
-        .await
-        .expect("Unable to forward trap message");
+
+    // TODO: asynchronously send traps, not consecutively
+    for address in addresses {
+        send_trap(&address, &trap)
+            .await
+            .expect(&format!("Unable to forward trap message to {}", address));
+    }
 }
 
 fn read_trap() -> IOResult<TrapMessage> {
