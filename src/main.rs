@@ -1,4 +1,5 @@
 use clap::{self, Clap};
+use regex::Regex;
 use reqwest::{Client, Response, Result as HttpResult, Url};
 use serde::Serialize;
 use std::io::{self, BufRead, Result as IOResult};
@@ -18,15 +19,32 @@ struct Opts {
 
 #[derive(Serialize, Debug)]
 struct TrapMessage {
-    hostname: String,
-    address: String,
+    remote_hostname: String,
+    transport_address: TransportAddress,
     varbinds: Vec<VarBind>,
+}
+
+#[derive(Serialize, Debug)]
+struct TransportAddress {
+    protocol: String,
+    remote_address: String,
+    local_address: String,
 }
 
 #[derive(Serialize, Debug)]
 struct VarBind {
     oid: String,
     value: String,
+}
+
+impl TransportAddress {
+    fn new() -> Self {
+        TransportAddress {
+            protocol: String::new(),
+            remote_address: String::new(),
+            local_address: String::new(),
+        }
+    }
 }
 
 #[tokio::main]
@@ -54,13 +72,13 @@ fn is_valid_address(address: String) -> Result<(), String> {
 fn read_trap() -> IOResult<TrapMessage> {
     let stdin = io::stdin();
     let mut lines = stdin.lock().lines();
-    let hostname = match lines.next() {
-        Some(hostname) => hostname?.trim().to_string(),
+    let remote_hostname = match lines.next() {
+        Some(value) => String::from(value?.trim()),
         None => String::new(),
     };
-    let address = match lines.next() {
-        Some(address) => address?.trim().to_string(),
-        None => String::new(),
+    let transport_address = match lines.next() {
+        Some(value) => parse_transport_address(value?.trim()),
+        None => TransportAddress::new(),
     };
     let mut varbinds = Vec::new();
     for line in lines {
@@ -73,10 +91,21 @@ fn read_trap() -> IOResult<TrapMessage> {
     }
 
     Ok(TrapMessage {
-        hostname,
-        address,
+        remote_hostname,
+        transport_address,
         varbinds,
     })
+}
+
+fn parse_transport_address(address: &str) -> TransportAddress {
+    // "UDP: [127.0.0.1]:57517->[127.0.0.1]:162"
+    let re = Regex::new(r"(.+): (\[.+](:\d+)?)->(\[.+](:\d+)?)").unwrap();
+    let captures = re.captures(address).unwrap();
+    TransportAddress {
+        protocol: String::from(&captures[1]),
+        remote_address: String::from(&captures[2]),
+        local_address: String::from(&captures[4]),
+    }
 }
 
 async fn send_trap(address: &str, trap: &TrapMessage) -> HttpResult<Response> {
