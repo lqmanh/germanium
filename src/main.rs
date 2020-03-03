@@ -10,6 +10,7 @@ struct Opts {
     #[clap(
         required = true,
         multiple = true,
+        validator = is_valid_address,
         help = "HTTP URL to forward trap messages to"
     )]
     address: Vec<String>,
@@ -31,22 +32,22 @@ struct VarBind {
 #[tokio::main]
 async fn main() {
     let opts = Opts::parse();
-    let addresses = opts.address;
-    addresses
-        .iter()
-        .map(|address| Url::parse(address).expect(&format!("Invalid URL: {}", address)))
-        .for_each(|url| match url.scheme() {
-            "http" | "https" => (),
-            scheme => panic!("Invalid URL scheme: {}", scheme),
-        });
-
     let trap = read_trap().expect("Unable to read trap message");
-
     // TODO: asynchronously send traps, not consecutively
-    for address in addresses {
+    for address in opts.address {
         send_trap(&address, &trap)
             .await
             .expect(&format!("Unable to forward trap message to {}", address));
+    }
+}
+
+fn is_valid_address(address: String) -> Result<(), String> {
+    match Url::parse(&address) {
+        Ok(url) => match url.scheme() {
+            "http" | "https" => Ok(()),
+            scheme => Err(format!("Invalid URL scheme: {}", scheme)),
+        },
+        Err(_) => Err(format!("Invalid URL: {}", address)),
     }
 }
 
