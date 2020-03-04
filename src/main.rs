@@ -2,7 +2,10 @@ use clap::{self, Clap};
 use regex::Regex;
 use reqwest::{Client, Response, Result as HttpResult, Url};
 use serde::Serialize;
-use std::io::{self, BufRead, Result as IOResult};
+use std::{
+    convert::From,
+    io::{self, BufRead, Result as IOResult},
+};
 use tokio;
 
 #[derive(Clap)]
@@ -47,6 +50,19 @@ impl TransportAddress {
     }
 }
 
+impl From<&str> for TransportAddress {
+    fn from(address: &str) -> Self {
+        // "UDP: [127.0.0.1]:57517->[127.0.0.1]:162"
+        let re = Regex::new(r"(.+): (\[.+](:\d+)?)->(\[.+](:\d+)?)").unwrap();
+        let captures = re.captures(address).unwrap();
+        TransportAddress {
+            protocol: String::from(&captures[1]),
+            remote_address: String::from(&captures[2]),
+            local_address: String::from(&captures[4]),
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let opts = Opts::parse();
@@ -77,7 +93,7 @@ fn read_trap() -> IOResult<TrapMessage> {
         None => String::new(),
     };
     let transport_address = match lines.next() {
-        Some(value) => parse_transport_address(value?.trim()),
+        Some(value) => TransportAddress::from(value?.trim()),
         None => TransportAddress::new(),
     };
     let mut varbinds = Vec::new();
@@ -95,17 +111,6 @@ fn read_trap() -> IOResult<TrapMessage> {
         transport_address,
         varbinds,
     })
-}
-
-fn parse_transport_address(address: &str) -> TransportAddress {
-    // "UDP: [127.0.0.1]:57517->[127.0.0.1]:162"
-    let re = Regex::new(r"(.+): (\[.+](:\d+)?)->(\[.+](:\d+)?)").unwrap();
-    let captures = re.captures(address).unwrap();
-    TransportAddress {
-        protocol: String::from(&captures[1]),
-        remote_address: String::from(&captures[2]),
-        local_address: String::from(&captures[4]),
-    }
 }
 
 async fn send_trap(address: &str, trap: &TrapMessage) -> HttpResult<Response> {
