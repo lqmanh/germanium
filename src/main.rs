@@ -33,13 +33,6 @@ struct TransportAddress {
     remote_address: String,
     local_address: String,
 }
-
-#[derive(Serialize, Debug)]
-struct VarBind {
-    oid: String,
-    value: String,
-}
-
 impl TransportAddress {
     fn new() -> Self {
         TransportAddress {
@@ -49,7 +42,6 @@ impl TransportAddress {
         }
     }
 }
-
 impl From<&str> for TransportAddress {
     fn from(address: &str) -> Self {
         // "UDP: [127.0.0.1]:57517->[127.0.0.1]:162"
@@ -63,9 +55,15 @@ impl From<&str> for TransportAddress {
     }
 }
 
+#[derive(Serialize, Debug)]
+struct VarBind {
+    oid: String,
+    value: String,
+}
+
 #[tokio::main]
 async fn main() {
-    let opts = Opts::parse();
+    let opts: Opts = Opts::parse();
     let trap = read_trap().expect("Unable to read trap message");
     // TODO: asynchronously send traps, not consecutively
     for address in opts.address {
