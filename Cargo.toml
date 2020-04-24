@@ -1,6 +1,6 @@
 [package]
 name = "germanium"
-version = "1.0.2"
+version = "1.1.0"
 authors = ["Lương Quang Mạnh <luongquangmanh85@gmail.com>"]
 edition = "2018"
 

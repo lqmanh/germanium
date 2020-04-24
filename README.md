@@ -1,3 +1,3 @@
-# germanium
+# Germanium | Ge
 
-SNMP trap forwarder (as a HTTP request)
+> Forward SNMP Trap/INFORM messages over REST/HTTP
