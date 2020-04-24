@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use clap::{self, Clap};
 use regex::Regex;
 use reqwest::{Client, Response, Result as HttpResult, Url};
@@ -25,6 +26,7 @@ struct TrapMessage {
     remote_hostname: String,
     transport_address: TransportAddress,
     varbinds: Vec<VarBind>,
+    timestamp: DateTime<Utc>,
 }
 
 #[derive(Serialize, Debug)]
@@ -108,6 +110,7 @@ fn read_trap() -> IOResult<TrapMessage> {
         remote_hostname,
         transport_address,
         varbinds,
+        timestamp: Utc::now(),
     })
 }
 
