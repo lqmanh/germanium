@@ -1,3 +1,3 @@
 # Germanium | Ge
 
-> Forward SNMP Trap/INFORM messages over REST/HTTP
+> Forward SNMP TRAP/INFORM messages over REST/HTTP
