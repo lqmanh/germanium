@@ -9,6 +9,18 @@ use std::{
 };
 use tokio;
 
+#[tokio::main]
+async fn main() {
+    let opts: Opts = Opts::parse();
+    let trap = read_trap().expect("Unable to read trap message");
+    // TODO: asynchronously send traps, not consecutively
+    for address in opts.address {
+        send_trap(&address, &trap)
+            .await
+            .expect(&format!("Unable to forward trap message to {}", address));
+    }
+}
+
 #[derive(Clap)]
 #[clap(version = clap::crate_version!(), author = clap::crate_authors!())]
 struct Opts {
@@ -61,18 +73,6 @@ impl From<&str> for TransportAddress {
 struct VarBind {
     oid: String,
     value: String,
-}
-
-#[tokio::main]
-async fn main() {
-    let opts: Opts = Opts::parse();
-    let trap = read_trap().expect("Unable to read trap message");
-    // TODO: asynchronously send traps, not consecutively
-    for address in opts.address {
-        send_trap(&address, &trap)
-            .await
-            .expect(&format!("Unable to forward trap message to {}", address));
-    }
 }
 
 fn is_valid_address(address: String) -> Result<(), String> {
