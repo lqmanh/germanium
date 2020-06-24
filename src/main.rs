@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use chrono::{DateTime, Utc};
 use clap::{self, Clap};
 use regex::Regex;
@@ -5,14 +8,18 @@ use reqwest::{Client, Response, Result as HttpResult, Url};
 use serde::Serialize;
 use std::{
     convert::From,
-    io::{self, BufRead, Result as IOResult},
+    io::{self, BufRead, Error as IOError, ErrorKind as IOErrorKind, Result as IOResult},
 };
 use tokio;
 
 #[tokio::main]
 async fn main() {
     let opts: Opts = Opts::parse();
-    let trap = read_trap().expect("Unable to read trap message");
+
+    let stdin = io::stdin();
+    let stdin_lock = stdin.lock();
+    let trap = read_trap(stdin_lock).expect("Unable to read trap message");
+
     // TODO: asynchronously send traps, not consecutively
     for address in opts.address {
         send_trap(&address, &trap)
@@ -33,7 +40,7 @@ struct Opts {
     address: Vec<String>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Eq, PartialEq)]
 struct TrapMessage {
     remote_hostname: String,
     transport_address: TransportAddress,
@@ -41,20 +48,11 @@ struct TrapMessage {
     timestamp: DateTime<Utc>,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Eq, PartialEq)]
 struct TransportAddress {
     protocol: String,
     remote_address: String,
     local_address: String,
-}
-impl TransportAddress {
-    fn new() -> Self {
-        TransportAddress {
-            protocol: String::new(),
-            remote_address: String::new(),
-            local_address: String::new(),
-        }
-    }
 }
 impl From<&str> for TransportAddress {
     fn from(address: &str) -> Self {
@@ -69,7 +67,7 @@ impl From<&str> for TransportAddress {
     }
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Eq, PartialEq)]
 struct VarBind {
     oid: String,
     value: String,
@@ -85,16 +83,15 @@ fn is_valid_address(address: String) -> Result<(), String> {
     }
 }
 
-fn read_trap() -> IOResult<TrapMessage> {
-    let stdin = io::stdin();
-    let mut lines = stdin.lock().lines();
+fn read_trap<R: BufRead>(input: R) -> IOResult<TrapMessage> {
+    let mut lines = input.lines();
     let remote_hostname = match lines.next() {
         Some(value) => String::from(value?.trim()),
-        None => String::new(),
+        None => return Err(IOError::new(IOErrorKind::InvalidData, "Malformed input")),
     };
     let transport_address = match lines.next() {
         Some(value) => TransportAddress::from(value?.trim()),
-        None => TransportAddress::new(),
+        None => return Err(IOError::new(IOErrorKind::InvalidData, "Malformed input")),
     };
     let mut varbinds = Vec::new();
     for line in lines {
